@@ -1,9 +1,7 @@
 ﻿using BenchmarkDotNet.Attributes;
 using Dapper;
 using Microsoft.Data.SqlClient;
-using SqlDataReaderExtensions;
 using System.Data;
-using MapDataReader;
 
 namespace SqlDataReaderExtensionsShell;
 
@@ -12,6 +10,7 @@ public class DataRead
 {
     public const string connectionString = "Server=(localdb)\\MSSQLLocalDB;Database=UsersDB;Trusted_Connection=True;";
     public const string sql = "SELECT TOP 100 [Id],[FirstName],[LastName],[Bio],[AccountCreatedAt],[DateOfBirth] ,[Active] ,[Email],[Followers] ,[Following],[Balance] FROM [UsersDB].[dbo].[User]";
+    public const string sqlSingle = "SELECT [Id],[FirstName],[LastName],[Bio],[AccountCreatedAt],[DateOfBirth] ,[Active] ,[Email],[Followers] ,[Following],[Balance] FROM [UsersDB].[dbo].[User] WHERE Id = @Id";
 
     [Benchmark]
     public async Task<List<User>> ReadUsingClassicMethod()
@@ -40,54 +39,55 @@ public class DataRead
     [Benchmark]
     public async Task<List<User>> ReadUsingDapper()
     {
-
         List<User> result = new();
 
         using (var connection = new SqlConnection(connectionString))
         {
             await connection.OpenAsync();
-            var enumerable = await connection.QueryAsync<User>(sql);
-            result = enumerable.AsList();
+            result = (await connection.QueryAsync<User>(sql)).AsList();
         }
 
         return result;
     }
 
+
     [Benchmark]
-    public async Task<List<User>> ReadUsingSourceGenerator()
+    public async Task<User?> ReadSingleUsingClassicMethod()
     {
-        List<User> result = new();
+        User? result = null;
 
         using (var connection = new SqlConnection(connectionString))
         {
             await connection.OpenAsync();
+
             SqlCommand command = connection.CreateCommand();
             command.CommandType = CommandType.Text;
-            command.CommandText = sql;
+            command.CommandText = sqlSingle;
 
-            var reader = await command.ExecuteReaderAsync();
+            command.Parameters.AddWithValue("@Id", -1);
 
-            result = reader.ToUser();
+            SqlDataReader reader = await command.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                result = DataReaderToObject(reader);
+            }
         }
 
         return result;
     }
 
+
+
     [Benchmark]
-    public async Task<List<User>> ReadUsingReflection()
+    public async Task<User?> ReadSignleUsingDapper()
     {
-        List<User> result = new();
+        User? result;
 
         using (var connection = new SqlConnection(connectionString))
         {
             await connection.OpenAsync();
-            SqlCommand command = connection.CreateCommand();
-            command.CommandType = CommandType.Text;
-            command.CommandText = sql;
 
-            var reader = await command.ExecuteReaderAsync();
-
-            result = reader.ReadListReflectionAsync<User>();
+            result = await connection.QueryFirstOrDefaultAsync<User>(sqlSingle, new { Id = -1 });
         }
 
         return result;
@@ -106,19 +106,6 @@ public class DataRead
         int Followers = reader["Followers"] != DBNull.Value ? (int)reader["Followers"] : default;
         int Following = reader["Following"] != DBNull.Value ? (int)reader["Following"] : default;
         decimal Balance = reader["Balance"] != DBNull.Value ? (decimal)reader["Balance"] : default;
-        return new User
-        {
-            Id = Id,
-            FirstName = FirstName,
-            LastName = LastName,
-            Bio = Bio,
-            AccountCreatedAt = AccountCreatedAt,
-            DateOfBirth = DateOfBirth,
-            Active = Active,
-            Email = Email,
-            Followers = Followers,
-            Following = Following,
-            Balance = Balance
-        };
+        return new User(Id, FirstName, LastName, Bio, AccountCreatedAt, DateOfBirth, Active, Email, Followers, Following, Balance);
     }
 }

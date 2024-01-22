@@ -7,13 +7,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="BenchmarkDotNet" Version="0.13.11" />
-		<PackageReference Include="Bogus" Version="35.0.1" />
-		<PackageReference Include="Dapper" Version="2.1.24" />
+		<PackageReference Include="BenchmarkDotNet" Version="0.13.12" />
+		<PackageReference Include="Bogus" Version="35.4.0" />
+		<PackageReference Include="Dapper" Version="2.1.28" />
 		<PackageReference Include="MapDataReader" Version="1.0.11" />
-		<PackageReference Include="Microsoft.Data.SqlClient" Version="5.1.2" />
-	</ItemGroup>
-	<ItemGroup>
-	  <ProjectReference Include="..\SqlDataReaderExtensions\SqlDataReaderExtensions.csproj" />
+		<PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.0-preview4.23342.2" />
 	</ItemGroup>
 </Project>
